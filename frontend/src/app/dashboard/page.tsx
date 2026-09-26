@@ -14,7 +14,7 @@ import {
   Tooltip,
   ResponsiveContainer
 } from 'recharts';
-import { LogOut, MessageSquare, Send, Loader2, Activity, User } from 'lucide-react';
+import { LogOut, MessageSquare, Send, Loader2, Activity, User, History, X, Trash2, Mic } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -25,10 +25,59 @@ export default function Dashboard() {
   
   const [stats, setStats] = useState<any[]>([]);
   
+  // Chat History state
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyData, setHistoryData] = useState<any[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+
+  const handleDeleteHistory = async (sessionIdToDelete: number) => {
+    if (!confirm("Are you sure you want to delete this conversation?")) return;
+    try {
+      await axios.delete(`${API_BASE_URL}/test/history/${sessionIdToDelete}`);
+      setHistoryData(prev => prev.filter(s => s.session_id !== sessionIdToDelete));
+      
+      // Refresh dashboard stats to remove it from graph if it was scored
+      const statsRes = await axios.get(`${API_BASE_URL}/dashboard/stats?user_id=${userId}`);
+      setStats(statsRes.data);
+    } catch (error) {
+      console.error("Failed to delete history", error);
+    }
+  };
+
+  
+  const deleteHistorySession = async (sessionIdToDelete: number) => {
+    if (!confirm("Are you sure you want to permanently delete this chat?")) return;
+    try {
+      await axios.delete(`${API_BASE_URL}/test/session/${sessionIdToDelete}`);
+      setHistoryData(prev => prev.filter(s => s.session_id !== sessionIdToDelete));
+      // Refresh dashboard stats to update the graph
+      const statsRes = await axios.get(`${API_BASE_URL}/dashboard/stats?user_id=${userId}`);
+      setStats(statsRes.data);
+    } catch (error) {
+      console.error("Failed to delete session", error);
+    }
+  };
+
+  const loadHistory = async () => {
+
+    if (!userId) return;
+    setShowHistory(true);
+    setHistoryLoading(true);
+    try {
+      const res = await axios.get(`${API_BASE_URL}/test/history?user_id=${userId}`);
+      setHistoryData(res.data);
+    } catch (error) {
+      console.error(error);
+    }
+    setHistoryLoading(false);
+  };
+
   // Chat state
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<{role: string, text: string}[]>([]);
   const [input, setInput] = useState("");
+  const [isListening, setIsListening] = useState(false);
   const [chatLoading, setChatLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -100,6 +149,26 @@ export default function Dashboard() {
     setChatLoading(false);
   };
 
+  const startListeningChat = () => {
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("Voice input is not supported in this browser. Please use Chrome or Edge.");
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    
+    recognition.onstart = () => setIsListening(true);
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(prev => (prev + ' ' + transcript).trim());
+    };
+    recognition.onerror = (e: any) => { console.error(e); setIsListening(false); };
+    recognition.onend = () => setIsListening(false);
+    recognition.start();
+  };
+
   const handleSend = async () => {
     if (!input.trim() || !sessionId || chatLoading) return;
     
@@ -162,6 +231,7 @@ export default function Dashboard() {
           <p className="text-slate-500 mt-2 font-medium pl-18">Track your well-being and connect with your AI companion.</p>
         </div>
         <div className="flex flex-wrap items-center gap-4">
+
           <Link href="/support" className="bg-white border-2 border-teal-600 text-teal-700 px-6 py-3 rounded-2xl font-bold hover:bg-teal-50 transition-all shadow-sm">
             Support Directory
           </Link>
@@ -204,7 +274,8 @@ export default function Dashboard() {
                 {isRed && (
                   <div className="mt-8">
                     <p className="text-sm font-bold mb-4 opacity-90">Your recent score indicates high distress. Please reach out to our network.</p>
-                    <Link href="/support" className="inline-block bg-rose-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-rose-700 w-full text-center shadow-lg shadow-rose-200 transition-all">
+          
+          <Link href="/support" className="inline-block bg-rose-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-rose-700 w-full text-center shadow-lg shadow-rose-200 transition-all">
                       Get Support Now
                     </Link>
                   </div>
@@ -309,14 +380,23 @@ export default function Dashboard() {
                <p className="text-slate-500 max-w-lg font-medium text-lg leading-relaxed relative z-10">
                  Start a secure, deeply empathetic conversation with your AI companion. Discuss your feelings, explore coping strategies, or simply vent.
                </p>
-               <button 
-                 onClick={startChat}
-                 disabled={chatLoading}
-                 className="mt-6 px-10 py-4 bg-teal-600 text-white rounded-2xl font-bold hover:bg-teal-700 flex items-center gap-3 transition-all shadow-lg shadow-teal-200 hover:shadow-xl relative z-10"
-               >
-                 {chatLoading ? <Loader2 className="animate-spin" size={24} /> : null}
-                 Start Conversation
-               </button>
+               <div className="flex flex-col items-center gap-4 mt-6 relative z-10">
+                 <button 
+                   onClick={startChat}
+                   disabled={chatLoading}
+                   className="w-full sm:w-auto px-10 py-4 bg-teal-600 text-white rounded-2xl font-bold hover:bg-teal-700 flex justify-center items-center gap-3 transition-all shadow-lg shadow-teal-200 hover:shadow-xl"
+                 >
+                   {chatLoading ? <Loader2 className="animate-spin" size={24} /> : null}
+                   Start Conversation
+                 </button>
+                 
+                 <button 
+                   onClick={loadHistory} 
+                   className="w-full sm:w-auto px-8 py-3 bg-white border-2 border-indigo-100 text-indigo-600 rounded-2xl font-bold hover:bg-indigo-50 flex justify-center items-center gap-2 transition-all shadow-sm hover:shadow-md"
+                 >
+                   <History size={20} /> View Past Chats
+                 </button>
+               </div>
              </div>
           ) : (
             <>
@@ -364,15 +444,25 @@ export default function Dashboard() {
               </div>
 
               <div className="p-5 sm:p-6 bg-white/80 backdrop-blur-md border-t border-slate-100 flex gap-4">
-                <input 
-                  type="text" 
-                  value={input} 
-                  onChange={e => setInput(e.target.value)}
-                  onKeyDown={e => e.key === 'Enter' && handleSend()}
-                  placeholder="Type your message..."
-                  className="flex-1 bg-white text-slate-800 rounded-2xl px-6 py-4 focus:outline-none focus:ring-4 focus:ring-teal-500/20 shadow-inner font-medium text-lg placeholder:text-slate-400"
-                  disabled={chatLoading}
-                />
+                <div className="relative flex-1 flex items-center">
+                  <input 
+                    type="text" 
+                    value={input} 
+                    onChange={e => setInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleSend()}
+                    placeholder="Type or speak your message..."
+                    className="w-full bg-white text-slate-800 rounded-2xl pl-6 pr-16 py-4 focus:outline-none focus:ring-4 focus:ring-teal-500/20 shadow-inner font-medium text-lg placeholder:text-slate-400"
+                    disabled={chatLoading}
+                  />
+                  <button
+                    type="button"
+                    onClick={startListeningChat}
+                    className={`absolute right-3 p-3 rounded-full flex items-center justify-center transition-all ${isListening ? 'bg-red-500 text-white animate-pulse shadow-md shadow-red-500/50' : 'text-slate-400 hover:bg-slate-100 hover:text-teal-600'}`}
+                    title="Dictate message"
+                  >
+                    <Mic size={24} />
+                  </button>
+                </div>
                 <button 
                   onClick={handleSend}
                   disabled={chatLoading || !input.trim()}
@@ -393,6 +483,70 @@ export default function Dashboard() {
           )}
         </motion.div>
       </div>
+
+      {/* History Modal */}
+      <AnimatePresence>
+        {showHistory && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm"
+          >
+            <motion.div 
+              initial={{ scale: 0.95, y: 20 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.95, y: 20 }}
+              className="bg-white rounded-[2rem] shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col overflow-hidden border border-slate-100"
+            >
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                <div className="flex items-center gap-3">
+                  <div className="bg-indigo-100 text-indigo-600 p-2 rounded-xl">
+                    <History size={24} />
+                  </div>
+                  <h2 className="text-2xl font-bold text-slate-800">Your Past Conversations</h2>
+                </div>
+                <button onClick={() => setShowHistory(false)} className="p-2 hover:bg-slate-200 rounded-full transition-colors text-slate-500">
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-6 space-y-8 bg-slate-50/50">
+                {historyLoading ? (
+                  <div className="flex justify-center items-center h-40">
+                    <Loader2 className="animate-spin text-indigo-500" size={40} />
+                  </div>
+                ) : historyData.length === 0 ? (
+                  <div className="text-center text-slate-400 py-10 font-medium">No past conversations found.</div>
+                ) : (
+                  historyData.map((session, idx) => (
+                    <div key={idx} className="bg-white rounded-[1.5rem] p-6 shadow-sm border border-slate-100">
+                      <div className="flex justify-between items-center mb-4 border-b pb-2">
+                        <div className="text-sm font-bold text-slate-400 uppercase tracking-wider">{session.date}</div>
+                        <button onClick={() => handleDeleteHistory(session.session_id)} className="text-slate-400 hover:text-rose-500 transition-colors p-1 bg-white rounded-md hover:bg-rose-50" title="Delete conversation">
+                          <Trash2 size={18} />
+                        </button>
+                      </div>
+                      <div className="space-y-4">
+                        {session.chat.map((qa: any, qIdx: number) => (
+                          <div key={qIdx} className="space-y-2">
+                            <div className="bg-slate-50 rounded-xl rounded-bl-sm p-4 text-slate-700 shadow-sm text-sm font-medium border border-slate-100">
+                              <span className="font-bold text-indigo-500 mb-1 block">AI</span>
+                              {qa.question}
+                            </div>
+                            <div className="flex justify-end">
+                              <div className="bg-teal-600 text-white rounded-xl rounded-br-sm p-4 shadow-sm text-sm font-medium max-w-[85%]">
+                                <span className="font-bold text-teal-200 mb-1 block">You</span>
+                                {qa.answer}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }

@@ -110,8 +110,12 @@ def get_custom_questions(user_id: int, db: Session = Depends(database.get_db)):
         print("Error generating custom MCQ:", e)
         return {"questions": default_questions}
 
+class StartTestRequest(BaseModel):
+    user_id: int = 1
+
 @app.post("/test/start", response_model=TestSessionResponse)
-def start_test(user_id: int = 1, db: Session = Depends(database.get_db)):
+def start_test(req: StartTestRequest, db: Session = Depends(database.get_db)):
+    user_id = req.user_id
     # Create a dummy user if it doesn't exist
     db_user = db.query(models.User).filter(models.User.id == user_id).first()
     if not db_user:
@@ -125,8 +129,19 @@ def start_test(user_id: int = 1, db: Session = Depends(database.get_db)):
     db.commit()
     db.refresh(db_session)
     
-    # Generate the first question with empty history
-    first_q = ai_engine.generate_next_question([])
+    # Get past context to remember the user
+    past_sessions = db.query(models.TestSession).filter(
+        models.TestSession.user_id == user_id, 
+        models.TestSession.advice != None
+    ).order_by(models.TestSession.date.desc()).all()
+    
+    user_context = ""
+    if past_sessions:
+        # Use the most recent advice/insights as memory
+        user_context = past_sessions[0].advice
+
+    # Generate the first question with empty history, but pass context
+    first_q = ai_engine.generate_next_question([], user_context)
     
     return {"session_id": db_session.id, "first_question": first_q}
 
@@ -178,8 +193,18 @@ def answer_question(req: AnswerRequest, db: Session = Depends(database.get_db)):
     past_responses = db.query(models.TestResponse).filter(models.TestResponse.session_id == req.session_id).all()
     history = [{"question": r.question_text, "answer": r.user_answer} for r in past_responses]
     
+    # Get past context to remember the user
+    past_sessions = db.query(models.TestSession).filter(
+        models.TestSession.user_id == db_session.user_id, 
+        models.TestSession.advice != None
+    ).order_by(models.TestSession.date.desc()).all()
+    
+    user_context = ""
+    if past_sessions:
+        user_context = past_sessions[0].advice
+
     # Generate next question
-    next_q = ai_engine.generate_next_question(history)
+    next_q = ai_engine.generate_next_question(history, user_context)
     return {
         "status": "ongoing",
         "next_question": next_q
@@ -265,3 +290,141 @@ def get_dashboard_stats(user_id: int = 1, db: Session = Depends(database.get_db)
     return stats
 # fixed encoding
 # model fix
+
+@app.get("/test/history")
+def get_user_history(user_id: int, db: Session = Depends(database.get_db)):
+    sessions = db.query(models.TestSession).filter(models.TestSession.user_id == user_id).order_by(models.TestSession.date.desc()).all()
+    
+    history_list = []
+    for s in sessions:
+        responses = db.query(models.TestResponse).filter(models.TestResponse.session_id == s.id).all()
+        if responses:
+            qa_pairs = [{"question": r.question_text, "answer": r.user_answer} for r in responses]
+            history_list.append({
+                "session_id": s.id,
+                "date": s.date.strftime("%b %d, %Y - %H:%M"),
+                "chat": qa_pairs
+            })
+            
+    return history_list
+
+@app.delete("/test/history/{session_id}")
+def delete_history(session_id: int, db: Session = Depends(database.get_db)):
+    db_session = db.query(models.TestSession).filter(models.TestSession.id == session_id).first()
+    if not db_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    # Delete associated responses
+    db.query(models.TestResponse).filter(models.TestResponse.session_id == session_id).delete()
+    
+    # Delete session
+    db.delete(db_session)
+    db.commit()
+    return {"status": "success"}
+
+@app.delete("/test/session/{session_id}")
+def delete_session(session_id: int, db: Session = Depends(database.get_db)):
+    # Delete responses first to clean up chat messages
+    db.query(models.TestResponse).filter(models.TestResponse.session_id == session_id).delete()
+    
+    # Delete the session itself
+    db_session = db.query(models.TestSession).filter(models.TestSession.id == session_id).first()
+    if not db_session:
+        raise HTTPException(status_code=404, detail="Session not found")
+        
+    db.delete(db_session)
+    db.commit()
+    return {"status": "deleted"}
+
+
+class ExplainRequest(BaseModel):
+    question_text: str
+
+
+class Phase1Request(BaseModel):
+    user_id: int
+    trauma_events: list[str]
+    symptoms: dict[str, str]
+
+@app.post("/test/adaptive")
+def get_adaptive_questions(req: Phase1Request):
+    # Summarize what the user flagged for Gemini
+    summary = f"Trauma/Events: {', '.join(req.trauma_events) if req.trauma_events else 'None'}\n"
+    summary += "Symptoms:\n"
+    for category, answer in req.symptoms.items():
+        summary += f"- {category}: {answer}\n"
+        
+    custom_qs = ai_engine.generate_adaptive_questions(summary)
+    return {"questions": custom_qs}
+
+class FullAdaptiveRequest(BaseModel):
+    user_id: int
+    transcript: str
+    x_score: float # So we can save the raw math if needed
+    y_score: float
+
+@app.post("/test/submit_adaptive")
+def submit_adaptive_test(req: FullAdaptiveRequest, db: Session = Depends(database.get_db)):
+    result = ai_engine.evaluate_adaptive_session(req.transcript)
+    
+    # Save the test session just like the old MCQ
+    # Using the AI's determined score and color
+    db_session = models.TestSession(
+        user_id=req.user_id,
+        distress_score=result["score"],
+        color_code=result["color"],
+        advice=result["advice"]
+    )
+    db.add(db_session)
+    db.commit()
+    db.refresh(db_session)
+    
+    # Save the test transcript into TestResponses so it appears in History
+    lines = req.transcript.split('\n')
+    current_q = ""
+    for line in lines:
+        if line.startswith("Q: "):
+            current_q = line[3:]
+        elif line.startswith("A: "):
+            current_a = line[3:]
+            if current_q and current_a:
+                new_resp = models.TestResponse(
+                    session_id=db_session.id,
+                    question_text=current_q,
+                    user_answer=current_a
+                )
+                db.add(new_resp)
+                current_q = ""
+    db.commit()
+    
+    return {
+        "status": "completed",
+        "score": result["score"],
+        "color": result["color"],
+        "advice": result["advice"]
+    }
+
+@app.post("/test/explain")
+def explain_question_api(req: ExplainRequest):
+    explanation = ai_engine.explain_question(req.question_text)
+    return {"explanation": explanation}
+
+@app.get("/test/daily_baseline")
+def get_daily_baseline(user_id: int, db: Session = Depends(database.get_db)):
+    past_tests = db.query(models.TestSession).filter(models.TestSession.user_id == user_id).order_by(models.TestSession.date.desc()).limit(1).all()
+    history_summary = "No previous history found."
+    if past_tests:
+        last = past_tests[0]
+        history_summary = f"Last test: Distress Score {last.distress_score}/100, Color {last.color_code}. Advice given: {last.advice}."
+    
+    questions = ai_engine.generate_daily_baseline(history_summary)
+    # Format them for frontend
+    formatted_qs = []
+    for q in questions:
+        formatted_qs.append({
+            "category": "Daily Check-in",
+            "type": "single_select",
+            "text": q["text"],
+            "options": q["options"]
+        })
+    return {"questions": formatted_qs}

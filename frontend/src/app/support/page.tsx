@@ -9,6 +9,7 @@ export default function SupportNetwork() {
 
   const tabs = [
     { id: 'all', label: 'All Resources' },
+    { id: 'nhaa', label: 'NHAA (Govt Helpline)' },
     { id: 'ngos', label: 'NGOs' },
     { id: 'psychiatrists', label: 'Psychiatrists' },
     { id: 'counsellors', label: 'Counsellors' },
@@ -49,9 +50,37 @@ export default function SupportNetwork() {
       <motion.div layout className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 pt-4">
         
         <AnimatePresence>
+          {/* NHAA Helpline */}
+          {(activeTab === 'all' || activeTab === 'nhaa') && (
+            <motion.div key="nhaa" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="md:col-span-2 lg:col-span-3 bg-gradient-to-r from-orange-500 to-rose-600 p-1 rounded-[2.5rem] shadow-xl shadow-orange-200/50 hover:-translate-y-1 hover:shadow-2xl hover:shadow-orange-300 transition-all">
+              <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[2.3rem] h-full flex flex-col md:flex-row items-center gap-8">
+                <div className="p-6 bg-orange-50 text-orange-600 rounded-full shadow-inner shrink-0 border border-orange-100">
+                  <Phone size={48} className="animate-pulse" />
+                </div>
+                <div className="flex-1 text-center md:text-left">
+                  <div className="flex flex-col md:flex-row md:items-center gap-3 mb-3">
+                    <h3 className="text-3xl font-black text-slate-800 tracking-tight">NHAA Helpline</h3>
+                    <span className="bg-orange-100 text-orange-700 text-xs font-black uppercase tracking-widest px-3 py-1 rounded-full w-fit mx-auto md:mx-0">Govt of India (MoSJE)</span>
+                  </div>
+                  <p className="text-[16px] font-medium text-slate-600 leading-relaxed max-w-3xl">
+                    National Helpline Against Atrocities. A toll-free, 24/7 single point of contact for registering complaints, tracking FIRs, and seeking immediate emergency support under the SC/ST (PoA) Act.
+                  </p>
+                </div>
+                <div className="shrink-0 w-full md:w-auto flex flex-col gap-3">
+                  <a href="tel:14566" className="flex items-center justify-center gap-3 text-lg font-black bg-gradient-to-r from-orange-500 to-rose-500 text-white px-8 py-4 rounded-2xl hover:opacity-90 transition-opacity shadow-lg shadow-orange-500/30">
+                    <Phone size={22}/> Call 14566
+                  </a>
+                  <a href="https://socialjustice.gov.in" target="_blank" className="flex items-center justify-center gap-2 text-sm font-bold text-slate-500 hover:text-orange-600 py-2 transition-colors">
+                    <ExternalLink size={16}/> Visit MoSJE Portal
+                  </a>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
           {/* NGOs */}
           {(activeTab === 'all' || activeTab === 'ngos') && (
-            <motion.div layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50 shadow-lg shadow-slate-200/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-rose-100 transition-all">
+            <motion.div key="ngo1" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50 shadow-lg shadow-slate-200/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-rose-100 transition-all">
               <div className="flex items-center gap-4 mb-6">
                 <div className="p-3 bg-rose-50 text-rose-500 rounded-2xl shadow-inner"><Heart size={28} /></div>
                 <h3 className="text-xl font-bold text-slate-800 tracking-tight">SNEHA NGO</h3>
@@ -65,7 +94,7 @@ export default function SupportNetwork() {
           )}
 
           {(activeTab === 'all' || activeTab === 'ngos') && (
-            <motion.div layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50 shadow-lg shadow-slate-200/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-rose-100 transition-all">
+            <motion.div key="ngo2" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50 shadow-lg shadow-slate-200/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-rose-100 transition-all">
               <div className="flex items-center gap-4 mb-6">
                 <div className="p-3 bg-rose-50 text-rose-500 rounded-2xl shadow-inner"><Heart size={28} /></div>
                 <h3 className="text-xl font-bold text-slate-800 tracking-tight">Majlis Legal Centre</h3>
@@ -80,7 +109,7 @@ export default function SupportNetwork() {
 
           {/* Psychiatrists */}
           {(activeTab === 'all' || activeTab === 'psychiatrists') && (
-            <motion.div layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50 shadow-lg shadow-slate-200/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-teal-100 transition-all">
+            <motion.div key="psychiatrist" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50 shadow-lg shadow-slate-200/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-teal-100 transition-all">
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-teal-50 text-teal-600 rounded-2xl shadow-inner"><Activity size={28} /></div>
@@ -97,7 +126,7 @@ export default function SupportNetwork() {
 
           {/* Counsellors */}
           {(activeTab === 'all' || activeTab === 'counsellors') && (
-            <motion.div layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50 shadow-lg shadow-slate-200/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-amber-100 transition-all">
+            <motion.div key="counsellor" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50 shadow-lg shadow-slate-200/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-amber-100 transition-all">
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-amber-50 text-amber-500 rounded-2xl shadow-inner"><Activity size={28} /></div>
@@ -114,7 +143,7 @@ export default function SupportNetwork() {
 
           {/* Social Workers */}
           {(activeTab === 'all' || activeTab === 'social_workers') && (
-            <motion.div layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50 shadow-lg shadow-slate-200/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-purple-100 transition-all">
+            <motion.div key="social" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50 shadow-lg shadow-slate-200/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-purple-100 transition-all">
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-purple-50 text-purple-500 rounded-2xl shadow-inner"><Briefcase size={28} /></div>
@@ -131,7 +160,7 @@ export default function SupportNetwork() {
 
           {/* District Authorities */}
           {(activeTab === 'all' || activeTab === 'authorities') && (
-            <motion.div layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50 shadow-lg shadow-slate-200/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-100 transition-all">
+            <motion.div key="auth" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50 shadow-lg shadow-slate-200/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-100 transition-all">
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-blue-50 text-blue-500 rounded-2xl shadow-inner"><Building size={28} /></div>
@@ -148,7 +177,7 @@ export default function SupportNetwork() {
 
           {/* Designated Officials */}
           {(activeTab === 'all' || activeTab === 'officials') && (
-            <motion.div layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50 shadow-lg shadow-slate-200/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-300 transition-all">
+            <motion.div key="official" layout initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.9 }} className="bg-white/80 backdrop-blur-xl p-8 rounded-[2rem] border border-white/50 shadow-lg shadow-slate-200/50 hover:-translate-y-1 hover:shadow-xl hover:shadow-slate-300 transition-all">
               <div className="flex justify-between items-start mb-6">
                 <div className="flex items-center gap-4">
                   <div className="p-3 bg-slate-100 text-slate-600 rounded-2xl shadow-inner"><FileSignature size={28} /></div>
